@@ -42,6 +42,7 @@ type Node struct {
 	used                  v1.ResourceList
 	Price                 float64
 	nodeclaimCreationTime time.Time
+	nodeclaim             *karpv1.NodeClaim
 }
 
 func NewNode(n *v1.Node) *Node {
@@ -72,6 +73,7 @@ func NewNodeFromNodeClaim(nc *karpv1.NodeClaim) *Node {
 		},
 	})
 	node.nodeclaimCreationTime = nc.CreationTimestamp.Time
+	node.nodeclaim = nc
 	return node
 }
 
@@ -93,10 +95,17 @@ func (n *Node) Labels() map[string]string {
 	return n.node.Labels
 }
 
-func (n *Node) Update(node *v1.Node) {
+func (n *Node) Update(node *v1.Node, nodeclaim *karpv1.NodeClaim) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	n.node = *node
+	if nodeclaim != nil {
+		n.nodeclaim = nodeclaim
+	}
+}
+
+func (n *Node) UpdateNodeClaim(nodeclaim *karpv1.NodeClaim) {
+	n.nodeclaim = nodeclaim
 }
 
 func (n *Node) Name() string {
@@ -191,6 +200,22 @@ func (n *Node) Cordoned() bool {
 		}
 	}
 	return false
+}
+
+func (n *Node) DriftStatus() (bool, string) {
+	if n.nodeclaim == nil {
+		return false, "-"
+	}
+
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	for _, c := range n.nodeclaim.Status.Conditions {
+		if c.Status == metav1.ConditionTrue && c.Type == karpv1.ConditionTypeDrifted {
+			return true, c.Reason
+		}
+	}
+
+	return false, "-"
 }
 
 func (n *Node) Ready() bool {

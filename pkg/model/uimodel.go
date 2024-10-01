@@ -161,12 +161,20 @@ func (u *UIModel) writeNodeInfo(n *Node, w io.Writer, resources []v1.ResourceNam
 			}
 
 			// node status
-			if n.Cordoned() && n.Deleting() {
-				fmt.Fprintf(w, "\tCordoned/Deleting")
-			} else if n.Deleting() {
-				fmt.Fprintf(w, "\tDeleting")
-			} else if n.Cordoned() {
-				fmt.Fprintf(w, "\tCordoned")
+			status_fields := []string{}
+			if n.Cordoned() {
+				status_fields = append(status_fields, "Cordoned")
+			}
+			if n.Deleting() {
+				status_fields = append(status_fields, "Deleting")
+			}
+			drifted, drift_reason := n.DriftStatus()
+			if drifted {
+				status_fields = append(status_fields, drift_reason)
+			}
+
+			if len(status_fields) > 0 {
+				fmt.Fprintf(w, "\t%s", strings.Join(status_fields, "/"))
 			} else {
 				fmt.Fprintf(w, "\t-")
 			}

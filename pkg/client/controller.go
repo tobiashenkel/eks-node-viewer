@@ -80,7 +80,9 @@ func (m Controller) startNodeClaimWatch(ctx context.Context, cluster *model.Clus
 				if nc.Status.ProviderID == "" {
 					return
 				}
-				if _, ok := cluster.GetNode(nc.Status.ProviderID); ok {
+				if existing, ok := cluster.GetNode(nc.Status.ProviderID); ok {
+					// Node already exists, add the nodeclaim to the node
+					existing.UpdateNodeClaim(nc)
 					return
 				}
 				node := model.NewNodeFromNodeClaim(nc)
@@ -137,7 +139,7 @@ func (m Controller) startNodeWatch(ctx context.Context, cluster *model.Cluster) 
 					if !ok {
 						log.Println("unable to find node", n.Name)
 					} else {
-						node.Update(n)
+						node.Update(n, nil)
 						m.updatePrice(node)
 					}
 					node.Show()

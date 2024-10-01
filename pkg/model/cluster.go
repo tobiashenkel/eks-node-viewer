@@ -38,7 +38,7 @@ func (c *Cluster) AddNode(node *Node) *Node {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if existing, ok := c.nodes[node.ProviderID()]; ok {
-		existing.Update(&node.node)
+		existing.Update(&node.node, node.nodeclaim)
 		return existing
 	}
 
